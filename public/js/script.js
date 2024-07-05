@@ -4,10 +4,11 @@ if (navigator.geolocation) {
   navigator.geolocation.watchPosition(
     (position) => {
       const { latitude, longitude } = position.coords;
+      console.log("Emitting location:", { latitude, longitude }); // Debug log
       socket.emit("sendLocation", { latitude, longitude });
     },
     (error) => {
-      console.log(error);
+      console.error("Geolocation error:", error);
     },
     {
       enableHighAccuracy: true,
@@ -15,6 +16,8 @@ if (navigator.geolocation) {
       maximumAge: 0,
     }
   );
+} else {
+  console.error("Geolocation is not supported by this browser.");
 }
 
 const map = L.map("map").setView([0, 0], 16);
@@ -23,20 +26,24 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {}).addTo(
   map
 );
 
-const makers = {};
+const markers = {};
 
 socket.on("receiveLocation", (coords) => {
   const { id, latitude, longitude } = coords;
-  map.setView([latitude, longitude], 17);
+  console.log("Received location:", coords); // Debug log
 
-  if (makers[id]) {
-    makers[id].setLatLng([latitude, longitude]);
+  if (markers[id]) {
+    markers[id].setLatLng([latitude, longitude]);
   } else {
-    makers[id] = L.marker([latitude, longitude]).addTo(map);
+    markers[id] = L.marker([latitude, longitude]).addTo(map);
   }
+  map.setView([latitude, longitude], 17);
 });
 
 socket.on("userDisconnect", (id) => {
-  map.removeLayer(makers[id]);
-  delete makers[id];
+  console.log("User disconnected:", id); // Debug log
+  if (markers[id]) {
+    map.removeLayer(markers[id]);
+    delete markers[id];
+  }
 });
